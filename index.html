@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Eisenhower+Englisch C1 – Offline Web App</title>
+<style>
+  :root{
+    --bg:#0f1320; --panel:#171b2e; --muted:#9197b3; --text:#e9ecff;
+    --accent:#6ee7ff; --accent2:#8b5cf6; --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --card:#111427; --chip:#232a4a; --grid:#262c4d; --border:#2e3562;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background: radial-gradient(1200px 700px at 20% -10%, #1d2342 0%, #0f1320 60%), var(--bg);
+    color:var(--text); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  }
+  header{
+    display:flex; gap:12px; align-items:center; justify-content:space-between;
+    padding:16px clamp(12px,3vw,28px); position:sticky; top:0; z-index:10;
+    background:linear-gradient(180deg, rgba(15,19,32,.9), rgba(15,19,32,.6) 70%, transparent);
+    backdrop-filter: blur(6px);
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{
+    width:36px;height:36px;border-radius:10px;
+    background: conic-gradient(from 210deg, var(--accent), var(--accent2), #4ade80, var(--accent));
+    box-shadow:0 0 0 2px rgba(255,255,255,.08) inset, var(--shadow);
+  }
+  .brand h1{font-size:18px;margin:0;letter-spacing:.3px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button, select, input[type="text"], input[type="date"], textarea{
+    background:var(--panel); color:var(--text); border:1px solid var(--border);
+    border-radius:10px; padding:10px 12px; outline:none; transition:.2s; font-size:14px;
+  }
+  button:hover, select:hover, input:hover, textarea:hover{border-color:#3a4384}
+  button.primary{background:linear-gradient(180deg,#2a356e,#222a57); border-color:#3b45a0}
+  button.ghost{background:#141835}
+  button.bad{background:#2b1420;border-color:#5a1a2a}
+  button.good{background:#0f2b1b;border-color:#1f7a46}
+  .grid{
+    display:grid; gap:14px;
+    grid-template-columns: 1.2fr .8fr;
+    padding: clamp(12px,3vw,28px);
+  }
+  @media (max-width:1100px){
+    .grid{grid-template-columns:1fr}
+  }
+  .panel{
+    background:linear-gradient(180deg,#131834,#10142b);
+    border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);
+  }
+  .panel>h2{
+    margin:0; padding:14px 16px; font-size:16px; letter-spacing:.3px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .panel .content{padding:14px}
+  .kv{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .matrix{
+    display:grid; gap:10px; height:min(72vh,900px);
+    grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+  }
+  .quad{
+    background:linear-gradient(180deg,#161a3d,#0f1331);
+    border:1px dashed #39407a; border-radius:14px; padding:10px; display:flex; flex-direction:column; overflow:auto;
+  }
+  .quad.dragover{outline:2px dashed var(--accent); outline-offset:-6px}
+  .qtitle{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .qtitle small{color:var(--muted)}
+  .tasks{display:flex;flex-direction:column;gap:8px;overflow:auto}
+  .task{
+    background:var(--card); border:1px solid #2b315f; border-radius:12px; padding:10px;
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:flex-start;
+  }
+  .task.dragging{opacity:.6}
+  .task .title{font-weight:600}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:var(--chip); border:1px solid #343d79; color:#c0c6ef; font-size:11px; padding:2px 8px; border-radius:999px}
+  .muted{color:var(--muted); font-size:12px}
+  .line{height:1px;background:linear-gradient(90deg,transparent,#2b315f,transparent);margin:10px 0}
+  .section{display:flex;gap:14px;flex-wrap:wrap}
+  .section>div{flex:1 1 260px}
+  textarea{width:100%; min-height:42px; resize:vertical}
+  .twocol{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  @media (max-width:700px){ .twocol{grid-template-columns:1fr} }
+  .bar{
+    height:10px; background:#1a1f3f; border-radius:999px; overflow:hidden; border:1px solid var(--border)
+  }
+  .bar>span{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0%}
+  .toast{
+    position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+    background:#0c1128; border:1px solid #3a4384; color:var(--text);
+    padding:10px 14px; border-radius:10px; box-shadow:var(--shadow); display:none; z-index:99;
+  }
+  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  @media (max-width:900px){ .split{grid-template-columns:1fr} }
+  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#121633; border:1px solid #2b315f; border-radius:6px; padding:2px 6px; color:#b9c0ff; font-size:12px}
+  .pill-toggle{display:flex; background:#121633; border:1px solid #333a74; border-radius:999px; overflow:hidden}
+  .pill-toggle button{border:none; background:transparent; padding:8px 12px}
+  .pill-toggle button.active{background:#1b2150}
+  .small{font-size:12px}
+  canvas{width:100%; height:220px; background:#0e1230; border:1px solid #2d3566; border-radius:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo" aria-hidden="true"></div>
+    <h1 id="appTitle">Eisenhower + Englisch C1</h1>
+  </div>
+  <div class="controls">
+    <div class="pill-toggle" role="tablist" aria-label="Language">
+      <button id="langDE" class="active" role="tab" aria-selected="true">DE</button>
+      <button id="langEN" role="tab" aria-selected="false">EN</button>
+    </div>
+    <button id="exportBtn" class="ghost" title="Export JSON/CSV">⬇ Export</button>
+    <input id="importInput" type="file" accept=".json,.csv" style="display:none"/>
+    <button id="importBtn" class="ghost">⬆ Import</button>
+    <button id="clearBtn" class="bad" title="Alles löschen">␡ Reset</button>
+  </div>
+</header>
+
+<main class="grid">
+  <!-- Left: Eisenhower Matrix -->
+  <section class="panel" aria-labelledby="matrixTitle">
+    <h2 id="matrixTitle">
+      <span data-i18n="matrixTitle">Eisenhower-Matrix</span>
+      <span class="muted small" id="dailyBits"></span>
+    </h2>
+    <div class="content">
+      <div class="section">
+        <div>
+          <label class="muted small" for="taskTitle" data-i18n="addTask">Aufgabe hinzufügen</label>
+          <input id="taskTitle" type="text" placeholder="z.B. Steuer machen bis Freitag 16:00" />
+        </div>
+        <div>
+          <label class="muted small" for="taskDue" data-i18n="dueDate">Fällig</label>
+          <input id="taskDue" type="date" />
+        </div>
+        <div>
+          <label class="muted small" for="taskRem" data-i18n="reminder">Erinnerung</label>
+          <input id="taskRem" type="datetime-local" />
+        </div>
+        <div style="display:flex;align-items:end;gap:8px">
+          <button id="addTaskBtn" class="primary">＋ <span data-i18n="add">Hinzufügen</span></button>
+          <button id="chatOpenBtn" class="ghost">🤖 <span data-i18n="chatBot">Chat-Bot</span></button>
+          <button id="pomodoroBtn" class="ghost">⏳ Pomodoro</button>
+        </div>
+      </div>
+
+      <div class="matrix" role="grid" aria-label="Eisenhower Matrix">
+        <div class="quad" data-q="1" aria-label="Wichtig & Dringend">
+          <div class="qtitle"><strong data-i18n="q1">WICHTIG & DRINGEND</strong><small data-i18n="doNow">Sofort erledigen</small></div>
+          <div class="tasks" id="q1"></div>
+        </div>
+        <div class="quad" data-q="2" aria-label="Wichtig & Nicht Dringend">
+          <div class="qtitle"><strong data-i18n="q2">WICHTIG & NICHT DRINGEND</strong><small data-i18n="plan">Planen</small></div>
+          <div class="tasks" id="q2"></div>
+        </div>
+        <div class="quad" data-q="3" aria-label="Nicht Wichtig & Dringend">
+          <div class="qtitle"><strong data-i18n="q3">NICHT WICHTIG & DRINGEND</strong><small data-i18n="delegate">Delegieren</small></div>
+          <div class="tasks" id="q3"></div>
+        </div>
+        <div class="quad" data-q="4" aria-label="Nicht Wichtig & Nicht Dringend">
+          <div class="qtitle"><strong data-i18n="q4">NICHT WICHTIG & NICHT DRINGEND</strong><small data-i18n="eliminate">Eliminieren</small></div>
+          <div class="tasks" id="q4"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right: Learning / Progress -->
+  <section class="panel" aria-labelledby="learnTitle">
+    <h2 id="learnTitle">
+      <span data-i18n="learnTitle">Englisch C1 – Lernen & Fortschritt</span>
+      <span class="muted small">XP: <span id="xp">0</span></span>
+    </h2>
+    <div class="content">
+      <div class="split">
+        <div>
+          <div class="kv">
+            <strong data-i18n="cloze">Lückentext</strong>
+            <button id="newCloze" class="ghost small">↻</button>
+          </div>
+          <div id="clozeContainer"></div>
+        </div>
+        <div>
+          <div class="kv">
+            <strong data-i18n="flashcards">Karteikarten</strong>
+            <span class="muted small" id="fcStats"></span>
+          </div>
+          <div class="section">
+            <div class="twocol">
+              <input id="fcFront" type="text" placeholder="front / prompt" />
+              <input id="fcBack" type="text" placeholder="back / answer" />
+            </div>
+            <div class="row">
+              <button id="addCard" class="primary">＋ <span data-i18n="addCard">Karte</span></button>
+              <button id="practice" class="ghost">▶ <span data-i18n="practice">Üben</span></button>
+              <button id="resetCards" class="ghost">⟲ <span data-i18n="reset">Reset</span></button>
+            </div>
+            <div id="practiceArea" class="panel" style="padding:10px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="line"></div>
+      <div class="kv"><strong data-i18n="progress">Fortschritt</strong><span class="muted small" id="streak"></span></div>
+      <div class="bar" aria-label="XP Bar"><span id="xpBar"></span></div>
+      <canvas id="trend" aria-label="XP Verlauf"></canvas>
+    </div>
+  </section>
+</main>
+
+<!-- Chat Bot Modal -->
+<div id="chatModal" class="panel" style="position:fixed;inset:0;max-width:780px;margin:auto;display:none">
+  <h2>
+    🤖 <span data-i18n="chatBot">Chat-Bot</span>
+    <button id="chatClose" class="ghost" style="float:right">✕</button>
+  </h2>
+  <div class="content">
+    <p class="muted" data-i18n="chatHint">Beschreibe einen Termin/Task in natürlicher Sprache. Ich ordne ihn automatisch zu.</p>
+    <textarea id="chatInput" placeholder="z.B. 'Präsentation für den Chef bis morgen 9 Uhr vorbereiten'"></textarea>
+    <div class="row">
+      <button id="chatClassify" class="primary">🧠 <span data-i18n="classify">Klassifizieren</span></button>
+      <button id="chatAdd" class="good">＋ <span data-i18n="addTask">Aufgabe hinzufügen</span></button>
+    </div>
+    <div id="chatResult" class="muted" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- Pomodoro Modal -->
+<div id="pomoModal" class="panel" style="position:fixed;inset:0;max-width:560px;margin:auto;display:none">
+  <h2>⏳ Pomodoro <button id="pomoClose" class="ghost" style="float:right">✕</button></h2>
+  <div class="content">
+    <div class="twocol">
+      <label>⏱️ <span data-i18n="focus">Fokus (min)</span><input id="pomoFocus" type="number" min="5" max="120" value="25"></label>
+      <label>☕ <span data-i18n="break">Pause (min)</span><input id="pomoBreak" type="number" min="1" max="60" value="5"></label>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="pomoStart" class="primary">▶ Start</button>
+      <button id="pomoStop" class="ghost">■ Stop</button>
+      <span id="pomoStatus" class="muted"></span>
+    </div>
+    <div class="bar" style="margin-top:10px"><span id="pomoBar"></span></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ===================== I18N ===================== */
+const STRINGS = {
+  de:{
+    matrixTitle:"Eisenhower-Matrix",
+    addTask:"Aufgabe hinzufügen",
+    dueDate:"Fällig",
+    reminder:"Erinnerung",
+    add:"Hinzufügen",
+    chatBot:"Chat-Bot",
+    q1:"WICHTIG & DRINGEND", doNow:"Sofort erledigen",
+    q2:"WICHTIG & NICHT DRINGEND", plan:"Planen",
+    q3:"NICHT WICHTIG & DRINGEND", delegate:"Delegieren",
+    q4:"NICHT WICHTIG & NICHT DRINGEND", eliminate:"Eliminieren",
+    learnTitle:"Englisch C1 – Lernen & Fortschritt",
+    cloze:"Lückentext", flashcards:"Karteikarten",
+    addCard:"Karte", practice:"Üben", reset:"Reset",
+    progress:"Fortschritt",
+    chatHint:"Beschreibe einen Termin/Task in natürlicher Sprache. Ich ordne ihn automatisch zu.",
+    classify:"Klassifizieren",
+    focus:"Fokus (min)", break:"Pause (min)"
+  },
+  en:{
+    matrixTitle:"Eisenhower Matrix",
+    addTask:"Add task",
+    dueDate:"Due",
+    reminder:"Reminder",
+    add:"Add",
+    chatBot:"Chat-bot",
+    q1:"IMPORTANT & URGENT", doNow:"Do now",
+    q2:"IMPORTANT & NOT URGENT", plan:"Plan",
+    q3:"NOT IMPORTANT & URGENT", delegate:"Delegate",
+    q4:"NOT IMPORTANT & NOT URGENT", eliminate:"Eliminate",
+    learnTitle:"English C1 – Learning & Progress",
+    cloze:"Cloze test", flashcards:"Flashcards",
+    addCard:"Card", practice:"Practice", reset:"Reset",
+    progress:"Progress",
+    chatHint:"Describe a meeting/task in natural language. I’ll auto-classify it.",
+    classify:"Classify",
+    focus:"Focus (min)", break:"Break (min)"
+  }
+};
+let LANG = localStorage.getItem('eh_lang') || 'de';
+function t(key){ return (STRINGS[LANG]||STRINGS.de)[key]||key; }
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.getElementById('appTitle').textContent = LANG==='de'?'Eisenhower + Englisch C1':'Eisenhower + English C1';
+  document.documentElement.lang = LANG==='de'?'de':'en';
+}
+document.getElementById('langDE').onclick = ()=>{LANG='de';localStorage.setItem('eh_lang','de');setLangButtons();applyI18n();toast('Sprache: Deutsch');};
+document.getElementById('langEN').onclick = ()=>{LANG='en';localStorage.setItem('eh_lang','en');setLangButtons();applyI18n();toast('Language: English');};
+function setLangButtons(){
+  document.getElementById('langDE').classList.toggle('active', LANG==='de');
+  document.getElementById('langEN').classList.toggle('active', LANG==='en');
+}
+setLangButtons(); applyI18n();
+
+/* ============== Daily Motivation & History ============== */
+const QUOTES = [
+  ["Discipline beats motivation.", "Motivation ist launisch, Disziplin gewinnt."],
+  ["Small steps, big distances.", "Kleine Schritte, große Wege."],
+  ["Clarity comes from action.", "Klarheit entsteht durch Handeln."],
+  ["You don’t need more time, you need priorities.", "Du brauchst nicht mehr Zeit, sondern Prioritäten."],
+  ["Read like a wolf eats.", "Lies wie ein Wolf frisst."]
+];
+const HISTORY = [
+  ["9 Aug 1936: Jesse Owens wins fourth gold in Berlin.", "9. Aug 1936: Jesse Owens gewinnt seine vierte Goldmedaille in Berlin."],
+  ["1 Jan 2002: Euro cash introduced.", "1. Jan 2002: Euro-Bargeld eingeführt."],
+  ["20 Jul 1969: Apollo 11 Moon landing.", "20. Jul 1969: Mondlandung Apollo 11."],
+  ["3 Oct 1990: German reunification.", "3. Okt 1990: Deutsche Wiedervereinigung."],
+  ["14 Mar 1879: Einstein born.", "14. März 1879: Einstein wird geboren."]
+];
+function dailyIndex(n){ const d=new Date(); return (d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate() + n)%5; }
+function setDailyBits(){
+  const qi = QUOTES[dailyIndex(0)], hi = HISTORY[dailyIndex(1)];
+  const s = LANG==='de' ? `🧠 ${qi[1]} • 🗓 ${hi[1]}` : `🧠 ${qi[0]} • 🗓 ${hi[0]}`;
+  document.getElementById('dailyBits').textContent = s;
+}
+setDailyBits();
+
+/* ================== Storage & Model ================== */
+const STORE_KEY = 'eh_store_v1';
+let state = loadState();
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return {tasks:[], xp:0, xpHistory:[], cards:[], streak:0, lastDay:todayKey()};
+    const s = JSON.parse(raw);
+    s.tasks??=[]; s.xp??=0; s.xpHistory??=[]; s.cards??=[]; s.streak??=0; s.lastDay??=todayKey();
+    return s;
+  }catch(e){ console.error(e); return {tasks:[], xp:0, xpHistory:[], cards:[], streak:0, lastDay:todayKey()}; }
+}
+function saveState(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error(e); toast(LANG==='de'?'Speichern fehlgeschlagen (LocalStorage voll?)':'Save failed (LocalStorage full?)'); }
+}
+function todayKey(){ const d=new Date(); return d.toISOString().slice(0,10); }
+
+/* ================== Eisenhower Matrix ================== */
+const qEls = {1:document.getElementById('q1'),2:document.getElementById('q2'),3:document.getElementById('q3'),4:document.getElementById('q4')};
+function renderTasks(){
+  [1,2,3,4].forEach(q=>qEls[q].innerHTML='');
+  state.tasks.forEach(task=> addTaskEl(task));
+}
+function addTaskEl(task){
+  const el = document.createElement('div');
+  el.className = 'task';
+  el.setAttribute('draggable','true');
+  el.dataset.id = task.id;
+
+  const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=!!task.completed;
+  cb.onchange = ()=>{
+    task.completed = cb.checked;
+    if(cb.checked){ gainXP(5); }
+    saveState(); renderXP(); renderTrend();
+  };
+
+  const mid = document.createElement('div');
+  const ttl = document.createElement('div'); ttl.className='title'; ttl.textContent = task.title;
+  const chips = document.createElement('div'); chips.className='chips';
+  if(task.dueDate) chips.append(chip('⏰ '+ task.dueDate));
+  chips.append(chip('Q'+task.quadrant));
+  if(task.reminder){ chips.append(chip('🔔 '+formatDT(task.reminder))); }
+  const small = document.createElement('div'); small.className='muted small';
+  small.textContent = (LANG==='de'?'Erstellt: ':'Created: ')+ new Date(task.createdAt).toLocaleString();
+  mid.append(ttl, chips, small);
+
+  const btns = document.createElement('div'); btns.style.display='flex'; btns.style.gap='6px';
+  const del = document.createElement('button'); del.className='bad'; del.textContent='🗑';
+  del.title = LANG==='de'?'Löschen':'Delete';
+  del.onclick = ()=>{ if(confirm(LANG==='de'?'Aufgabe löschen?':'Delete task?')){ state.tasks = state.tasks.filter(t=>t.id!==task.id); saveState(); renderTasks(); } };
+  btns.append(del);
+
+  el.append(cb, mid, btns);
+  enableDnD(el);
+  qEls[task.quadrant]?.append(el);
+}
+function chip(text){ const c=document.createElement('span'); c.className='chip'; c.textContent=text; return c; }
+function createTaskFromInputs(){
+  const title = document.getElementById('taskTitle').value.trim();
+  if(!title){ toast(LANG==='de'?'Bitte Titel eingeben':'Please enter a title'); return; }
+  const due = document.getElementById('taskDue').value || null;
+  const rem = document.getElementById('taskRem').value || null;
+  const quadrant = heuristicQuadrant(title, due);
+  const task = { id:crypto.randomUUID(), title, dueDate:due, reminder:rem, quadrant, createdAt:Date.now(), completed:false };
+  state.tasks.push(task); saveState(); addTaskEl(task);
+  document.getElementById('taskTitle').value=''; document.getElementById('taskDue').value=''; document.getElementById('taskRem').value='';
+  toast(LANG==='de'?'Aufgabe hinzugefügt':'Task added');
+}
+document.getElementById('addTaskBtn').onclick = createTaskFromInputs;
+
+/* Drag & Drop */
+function enableDnD(el){
+  el.addEventListener('dragstart', e=>{ el.classList.add('dragging'); e.dataTransfer.setData('text/plain', el.dataset.id); });
+  el.addEventListener('dragend', ()=> el.classList.remove('dragging'));
+}
+document.querySelectorAll('.quad').forEach(quad=>{
+  quad.addEventListener('dragover', e=>{ e.preventDefault(); quad.classList.add('dragover'); });
+  quad.addEventListener('dragleave', ()=> quad.classList.remove('dragover'));
+  quad.addEventListener('drop', e=>{
+    e.preventDefault(); quad.classList.remove('dragover');
+    const id = e.dataTransfer.getData('text/plain');
+    const task = state.tasks.find(t=>t.id===id); if(!task) return;
+    task.quadrant = parseInt(quad.dataset.q,10); saveState(); renderTasks();
+  });
+});
+
+/* ================== Rule-Based Classifier (Offline) ================== */
+function heuristicQuadrant(text, due){
+  // Scores: importance & urgency 0..100
+  const s = scoreText(text, due);
+  const imp = s.importance, urg = s.urgency;
+  if(imp>=60 && urg>=60) return 1;
+  if(imp>=60 && urg<60)  return 2;
+  if(imp<60  && urg>=60) return 3;
+  return 4;
+}
+function scoreText(text, due){
+  const now = new Date();
+  let urgency = 20, importance = 20;
+  const tx = (text||'').toLowerCase();
+
+  // Importance keywords (DE/EN)
+  const impWords = [
+    'wichtig','prüfung','examen','abschluss','deadline','chef','kunde','vertrag',
+    'bewerbung','karriere','gesundheit','steuer','exam','thesis','presentation',
+    'invoice','tax','doctor','krankenhaus','rechnung','zahlung','visa','bank'
+  ];
+  if(impWords.some(w=>tx.includes(w))) importance += 40;
+
+  // Urgency keywords
+  const urgWords = ['heute','sofort','jetzt','dringend','morgen','today','urgent','now','asap','tomorrow'];
+  if(urgWords.some(w=>tx.includes(w))) urgency += 40;
+
+  // Time mentions quick regex
+  const hourSoon = /\b(1|2|3|4|5|6)\s*(h|std|stunden)\b/.test(tx) || /\b(1|2|3|4|5|6)\s*(mins|minuten|minutes)\b/.test(tx);
+  if(hourSoon) urgency += 30;
+
+  // Due date proximity
+  if(due){
+    try{
+      const d = new Date(due);
+      const days = (d - now)/(1000*3600*24);
+      if(days <= 0.3) urgency += 50;
+      else if(days <= 1.1) urgency += 35;
+      else if(days <= 3.5) urgency += 20;
+      else urgency += 5;
+    }catch{}
+  }else{
+    // natural language simple cues
+    if(/\bmorgen|tomorrow\b/.test(tx)) urgency += 30;
+    if(/\bheute|today\b/.test(tx)) urgency += 40;
+    if(/\bnächste\s*woche|next\s*week\b/.test(tx)) urgency += 10;
+  }
+
+  // Low-importance cues
+  if(/\bfilm|serie|spiel|game|scrollen|social|tiktok|netflix\b/.test(tx)) importance -= 20;
+
+  // Floors/ceilings
+  urgency = Math.max(0, Math.min(100, urgency));
+  importance = Math.max(0, Math.min(100, importance));
+  return {urgency, importance};
+}
+
+/* ================== Chat Bot Modal ================== */
+const chatModal = document.getElementById('chatModal');
+document.getElementById('chatOpenBtn').onclick = ()=>{ chatModal.style.display='block'; };
+document.getElementById('chatClose').onclick = ()=>{ chatModal.style.display='none'; };
+let lastChat = null;
+document.getElementById('chatClassify').onclick = ()=>{
+  const txt = document.getElementById('chatInput').value.trim();
+  if(!txt){ toast(LANG==='de'?'Bitte Text eingeben':'Please enter text'); return; }
+  const dateMatch = txt.match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})/);
+  const due = dateMatch ? normDate(dateMatch[1], dateMatch[2], dateMatch[3]) : null;
+  const q = heuristicQuadrant(txt, due);
+  const s = scoreText(txt, due);
+  lastChat = {title:txt, dueDate:due, quadrant:q};
+  const qText = {1:t('q1'),2:t('q2'),3:t('q3'),4:t('q4')}[q];
+  document.getElementById('chatResult').innerHTML =
+    `→ <strong>${qText}</strong> | `+
+    `${LANG==='de'?'Dringlichkeit':'Urgency'}: ${s.urgency} · `+
+    `${LANG==='de'?'Wichtigkeit':'Importance'}: ${s.importance}`+
+    (due?` · ${LANG==='de'?'Fällig':'Due'}: ${due}`:'');
+};
+document.getElementById('chatAdd').onclick = ()=>{
+  if(!lastChat){ toast(LANG==='de'?'Bitte zuerst klassifizieren':'Please classify first'); return; }
+  const task = { id:crypto.randomUUID(), title:lastChat.title, dueDate:lastChat.dueDate||null, reminder:null, quadrant:lastChat.quadrant, createdAt:Date.now(), completed:false };
+  state.tasks.push(task); saveState(); renderTasks(); chatModal.style.display='none'; toast(LANG==='de'?'Aufgabe aus Chat hinzugefügt':'Task added from chat');
+};
+function normDate(d,m,y){
+  d=parseInt(d,10); m=parseInt(m,10); y=parseInt(y,10); if(y<100) y+=2000;
+  return new Date(y, m-1, d).toISOString().slice(0,10);
+}
+
+/* ================== XP & Trend ================== */
+function gainXP(n){ state.xp += n; pushXPHistory(n); saveState(); renderXP(); renderTrend();}
+function pushXPHistory(n){
+  const day = todayKey();
+  const last = state.xpHistory[state.xpHistory.length-1];
+  if(last && last.day===day){ last.xp += n; }
+  else { state.xpHistory.push({day, xp:n}); }
+  // Streak
+  if(state.lastDay !== day){
+    const prev = new Date(state.lastDay); const today = new Date(day);
+    const diff = (today - prev)/(1000*3600*24);
+    if(diff===1) state.streak += 1; else state.streak = 1;
+    state.lastDay = day;
+  }
+}
+function renderXP(){
+  document.getElementById('xp').textContent = state.xp|0;
+  const levelPct = Math.min(100, (state.xp % 100)); // simple level bar
+  document.getElementById('xpBar').style.width = levelPct + '%';
+  document.getElementById('streak').textContent = (LANG==='de'?'Serie: ':'Streak: ')+ (state.streak||0) + '🔥';
+}
+renderXP();
+
+/* Simple canvas line chart (no external libs) */
+function renderTrend(){
+  const cvs = document.getElementById('trend');
+  const ctx = cvs.getContext('2d');
+  const w = cvs.width = cvs.clientWidth * devicePixelRatio;
+  const h = cvs.height = cvs.clientHeight * devicePixelRatio;
+  ctx.clearRect(0,0,w,h);
+  const data = state.xpHistory.slice(-30); // last 30 days entries
+  if(data.length===0){ ctx.fillStyle='#9aa2e6'; ctx.fillText(LANG==='de'?'Noch keine Daten':'No data yet', 10, 20); return; }
+  const max = Math.max(...data.map(d=>d.xp), 10);
+  const pad = 30*devicePixelRatio;
+  // axes
+  ctx.strokeStyle='#2f386e'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad, h-pad); ctx.lineTo(w-10, h-pad); ctx.moveTo(pad, 10); ctx.lineTo(pad, h-10); ctx.stroke();
+  // line
+  ctx.beginPath(); ctx.lineWidth=2.5; ctx.strokeStyle='#8fb3ff';
+  data.forEach((d,i)=>{
+    const x = pad + i*( (w-pad-20)/(Math.max(1,data.length-1)) );
+    const y = (h-pad) - (d.xp/max)*(h-pad-20);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+renderTrend();
+
+/* ================== English: Cloze + Flashcards ================== */
+const CLOZE_BANK = [
+  "Despite initial setbacks, the research team managed to ____ significant progress within a month.",
+  "Her argument was compelling because it was both logically sound and ____ supported.",
+  "The new policy aims to ____ innovation rather than stifle it.",
+  "He offered a nuanced perspective, avoiding overly ____ conclusions.",
+  "To operate at scale, the company needs a more ____ infrastructure."
+];
+const CLOZE_ANS = ["achieve","empirically","foster","simplistic","robust"];
+function newCloze(){
+  const i = Math.floor(Math.random()*CLOZE_BANK.length);
+  const sentence = CLOZE_BANK[i];
+  const ans = CLOZE_ANS[i];
+  const container = document.getElementById('clozeContainer');
+  container.innerHTML = '';
+  const p = document.createElement('p'); p.textContent = sentence.replace('____','_____');
+  const inp = document.createElement('input'); inp.type='text'; inp.placeholder = 'answer';
+  const btn = document.createElement('button'); btn.className='primary'; btn.textContent = LANG==='de'?'Prüfen':'Check';
+  const res = document.createElement('span'); res.className='muted'; res.style.marginLeft='8px';
+  btn.onclick = ()=>{
+    const ok = inp.value.trim().toLowerCase() === ans;
+    res.textContent = ok ? (LANG==='de'?'Korrekt! +10 XP':'Correct! +10 XP') : (LANG==='de'?`Tipp: ${ans}`:`Hint: ${ans}`);
+    if(ok) gainXP(10);
+  };
+  container.append(p, inp, btn, res);
+}
+document.getElementById('newCloze').onclick = newCloze; newCloze();
+
+/* Flashcards with tiny SR (Again/Good/Easy) */
+function fcStats(){ document.getElementById('fcStats').textContent = `${state.cards.length} cards`; }
+fcStats();
+document.getElementById('addCard').onclick = ()=>{
+  const f = document.getElementById('fcFront').value.trim();
+  const b = document.getElementById('fcBack').value.trim();
+  if(!f||!b){ toast(LANG==='de'?'Bitte Vorder- und Rückseite':'Enter front and back'); return; }
+  state.cards.push({id:crypto.randomUUID(), front:f, back:b, due:Date.now(), interval:1, ease:2.5});
+  saveState(); fcStats(); document.getElementById('fcFront').value=''; document.getElementById('fcBack').value='';
+  toast(LANG==='de'?'Karte hinzugefügt':'Card added');
+};
+document.getElementById('resetCards').onclick = ()=>{
+  if(confirm(LANG==='de'?'Alle Karten zurücksetzen?':'Reset all cards?')){
+    state.cards.forEach(c=>{ c.due=Date.now(); c.interval=1; c.ease=2.5; });
+    saveState(); toast(LANG==='de'?'Zurückgesetzt':'Reset');
+  }
+};
+
+document.getElementById('practice').onclick = showPractice;
+function showPractice(){
+  const area = document.getElementById('practiceArea'); area.innerHTML='';
+  const now = Date.now();
+  const due = state.cards.filter(c=>c.due<=now);
+  if(due.length===0){ area.innerHTML = `<span class="muted">${LANG==='de'?'Keine fälligen Karten. 🎉':'No due cards. 🎉'}</span>`; return; }
+  const c = due[0];
+  const q = document.createElement('div'); q.innerHTML = `<strong>${c.front}</strong>`;
+  const a = document.createElement('div'); a.textContent = '…'; a.className='muted';
+  const show = document.createElement('button'); show.className='ghost'; show.textContent = LANG==='de'?'Antwort zeigen':'Show answer';
+  show.onclick = ()=>{ a.textContent = c.back; };
+  const row = document.createElement('div'); row.className='row';
+  const again = mkBtn('Again', ()=> rateCard(c,'again'));
+  const good  = mkBtn('Good',  ()=> rateCard(c,'good'));
+  const easy  = mkBtn('Easy',  ()=> rateCard(c,'easy'));
+  row.append(again,good,easy);
+  area.append(q, show, a, row);
+}
+function mkBtn(lbl, fn){ const b=document.createElement('button'); b.className='ghost'; b.textContent=lbl; b.onclick=fn; return b; }
+function rateCard(card, rating){
+  // Super-light SM2-ish
+  if(rating==='again'){ card.interval = 1; card.ease = Math.max(1.3, card.ease-0.2); card.due = Date.now()+ 1000*60*10; }
+  if(rating==='good'){ card.interval = Math.ceil(card.interval*card.ease); card.due = Date.now()+ 1000*60*60*24*card.interval; gainXP(3); }
+  if(rating==='easy'){ card.ease += 0.15; card.interval = Math.ceil(card.interval*card.ease*1.1); card.due = Date.now()+ 1000*60*60*24*card.interval; gainXP(5); }
+  saveState(); showPractice();
+}
+
+/* ================== Reminders & Pomodoro ================== */
+let remTimer = null;
+function checkReminders(){
+  const now = new Date();
+  state.tasks.forEach(task=>{
+    if(task.reminder && !task._remFired){
+      const t = new Date(task.reminder);
+      if(now >= t){
+        task._remFired = true; saveState();
+        toast((LANG==='de'?'Erinnerung: ':'Reminder: ')+ task.title);
+        beep();
+      }
+    }
+  });
+}
+remTimer = setInterval(checkReminders, 30*1000);
+
+const pomoModal = document.getElementById('pomoModal');
+document.getElementById('pomodoroBtn').onclick = ()=>{ pomoModal.style.display='block'; };
+document.getElementById('pomoClose').onclick = ()=>{ pomoModal.style.display='none'; };
+let pomo = {running:false, focus:25, break:5, phase:'focus', end:0, raf:null};
+document.getElementById('pomoStart').onclick = startPomo;
+document.getElementById('pomoStop').onclick  = stopPomo;
+
+function startPomo(){
+  const f = parseInt(document.getElementById('pomoFocus').value,10)||25;
+  const b = parseInt(document.getElementById('pomoBreak').value,10)||5;
+  pomo.focus=f; pomo.break=b; pomo.phase='focus'; pomo.running=true;
+  pomo.end = Date.now() + f*60*1000;
+  loopPomo();
+}
+function stopPomo(){ pomo.running=false; cancelAnimationFrame(pomo.raf); document.getElementById('pomoStatus').textContent=''; document.getElementById('pomoBar').style.width='0%'; }
+function loopPomo(){
+  if(!pomo.running) return;
+  const now = Date.now(); const left = Math.max(0, pomo.end - now);
+  const total = (pomo.phase==='focus'?pomo.focus:pomo.break)*60*1000;
+  const pct = 100*(1 - left/total);
+  document.getElementById('pomoBar').style.width = pct.toFixed(2)+'%';
+  document.getElementById('pomoStatus').textContent = `${pomo.phase==='focus'?'🔵 Focus':'🟢 Break'} · ${fmtMS(left)}`;
+  if(left<=0){
+    beep();
+    if(pomo.phase==='focus'){ gainXP(8); pomo.phase='break'; pomo.end = Date.now()+pomo.break*60*1000; }
+    else { pomo.phase='focus'; pomo.end = Date.now()+pomo.focus*60*1000; }
+  }
+  pomo.raf = requestAnimationFrame(loopPomo);
+}
+function fmtMS(ms){ const s=Math.ceil(ms/1000); const m=Math.floor(s/60); const r=s%60; return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`; }
+function beep(){
+  try{
+    const a = new (window.AudioContext||window.webkitAudioContext)();
+    const o = a.createOscillator(); const g = a.createGain();
+    o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(a.destination); g.gain.setValueAtTime(0.001,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.2, a.currentTime+0.01);
+    o.start(); setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime+0.2); o.stop(a.currentTime+0.25); }, 200);
+  }catch{}
+}
+
+/* ================== Export / Import ================== */
+document.getElementById('exportBtn').onclick = ()=>{
+  try{
+    // JSON
+    const json = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    downloadBlob(json, 'eisenhower_data.json');
+    // CSV (tasks)
+    const csvRows = [['id','title','dueDate','reminder','quadrant','createdAt','completed']];
+    state.tasks.forEach(t=> csvRows.push([t.id,esc(t.title),t.dueDate||'',t.reminder||'',t.quadrant,t.createdAt,t.completed].map(v=>String(v)).map(csvField).join(',')));
+    const csv = new Blob([csvRows.map(r=>Array.isArray(r)?r:r.split(',')).join('\n')], {type:'text/csv'});
+    downloadBlob(csv, 'eisenhower_tasks.csv');
+    toast(LANG==='de'?'Export erstellt':'Export created');
+  }catch(e){ console.error(e); toast('Export error'); }
+};
+document.getElementById('importBtn').onclick = ()=> document.getElementById('importInput').click();
+document.getElementById('importInput').onchange = (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onerror = ()=> toast('Import read error');
+  reader.onload = ()=>{
+    try{
+      if(file.name.endsWith('.json')){
+        const data = JSON.parse(reader.result);
+        if(confirm(LANG==='de'?'Vorhandene Daten überschreiben?':'Overwrite existing data?')){
+          state = Object.assign({tasks:[], xp:0, xpHistory:[], cards:[], streak:0, lastDay:todayKey()}, data);
+          saveState(); renderTasks(); renderXP(); renderTrend(); fcStats(); setDailyBits();
+        }
+      }else if(file.name.endsWith('.csv')){
+        const lines = String(reader.result).split(/\r?\n/).filter(Boolean);
+        const head = lines.shift().split(',');
+        const idx = Object.fromEntries(head.map((k,i)=>[k,i]));
+        lines.forEach(line=>{
+          const cols = parseCSV(line);
+          if(cols.length<7) return;
+          const t = {
+            id: cols[idx.id], title: unesc(cols[idx.title]||''), dueDate: cols[idx.dueDate]||null,
+            reminder: cols[idx.reminder]||null, quadrant: parseInt(cols[idx.quadrant]||'4',10),
+            createdAt: parseInt(cols[idx.createdAt]||Date.now(),10), completed: cols[idx.completed]==='true'
+          };
+          if(!state.tasks.find(x=>x.id===t.id)) state.tasks.push(t);
+        });
+        saveState(); renderTasks(); toast(LANG==='de'?'CSV importiert':'CSV imported');
+      }else{
+        toast(LANG==='de'?'Unbekanntes Format':'Unknown format');
+      }
+    }catch(err){ console.error(err); toast('Import error'); }
+  };
+  reader.readAsText(file);
+};
+function esc(s){ return s; }
+function csvField(s){ s = String(s); if(/[",\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"'; return s; }
+function parseCSV(line){
+  const out=[]; let cur=''; let q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(q){
+      if(ch=='"' && line[i+1]=='"'){ cur+='"'; i++; }
+      else if(ch=='"'){ q=false; }
+      else cur+=ch;
+    }else{
+      if(ch==','){ out.push(cur); cur=''; }
+      else if(ch=='"'){ q=true; }
+      else cur+=ch;
+    }
+  }
+  out.push(cur); return out;
+}
+function downloadBlob(blob, name){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
+
+/* ================== Utilities ================== */
+function formatDT(dt){ try{ return new Date(dt).toLocaleString(); }catch{ return dt; } }
+function toast(msg){
+  const t = document.getElementById('toast'); t.textContent = msg; t.style.display='block';
+  clearTimeout(t._to); t._to = setTimeout(()=> t.style.display='none', 2400);
+}
+
+/* ================== Init ================== */
+renderTasks();
+
+/* ====== Hardening: global error handler ====== */
+window.addEventListener('error', e=>{ console.error(e.message); toast('Error: '+e.message); });
+window.addEventListener('unhandledrejection', e=>{ console.error('Promise', e.reason); toast('Async error'); });
+</script>
+</body>
+</html>
